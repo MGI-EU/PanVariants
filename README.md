@@ -1,7 +1,7 @@
 # PanVariants Usage Documentation
 
 ## Overview
-`PanVariants` is a comprehensive pan-genome variant detection pipeline designed to identify genetic variations across diverse populations. It supports execution on both local machines and Sun Grid Engine (SGE) clusters. Leveraging pan-genome references, the tool enables high-precision detection of Copy Number Variations (CNV), Structural Variations (SV), and Short Tandem Repeats (STR), offering robust capabilities for complex genomic analysis.
+`PanVariants` is a comprehensive pan-genome variant detection pipeline designed to identify genetic variations across diverse populations. It supports execution on both local machines and Sun Grid Engine (SGE) clusters. Leveraging pan-genome references, the tool enables high-precision detection of Single Nucleotide Variants (SNVs), INDELs (<50bp), Copy Number Variants (CNVs), Short Tandem Repeats (STRs), and other Structural Variants (SVs, ≥50bp), offering robust capabilities for complex genomic analysis.
 
 ---
 
