@@ -1,6 +1,6 @@
 # Create a database folder within the workflow folder
 DB=`pwd`/database
-mkdir $DB
+mkdir -p $DB
 
 # ===================================================================
 # Pangenome refererence genome: hprc-v1.1-mc-grch38
@@ -73,11 +73,3 @@ $rtg format -o GRCh38.sdf ${reference}
 mkdir -p $DB/stratifications/v3.6 && cd $DB/stratifications/v3.6
 wget https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/genome-stratifications/v3.6/genome-stratifications-GRCh38@all.tar.gz && \
 tar xzf genome-stratifications-GRCh38@all.tar.gz
-
-
-# ===================================================================
-# ExpansionHunter files for the reference genome: hg38/GRCh38
-# ===================================================================
-# Copy files from the workflow folder
-mkdir -p $DB/STR/RepeatCatalogs/hg38 && cd $DB/STR/RepeatCatalogs/hg38
-cp $DB/../ STR/RepeatCatalogs/hg38/variant_catalog.json ./
