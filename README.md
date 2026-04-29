@@ -13,8 +13,20 @@ python3 PanVariant.py --samplelist samplelist --executor local
 ```
 
 ---
-## Software Dependencies
+## Install
+```bash
+git clone https://github.com/MGI-EU/PanVariants.git
+```
 
+### Database download
+- Here we take the download of databases related to the GRCh38 reference genome as an example; the download process for other reference genomes is similar.
+```bash
+sh PanVariants_required_files.sh
+```
+
+### singularity .sif files download
+- Download all .sif files from this URL: https://zenodo.org/records/19848582 and place them in the "sifs" folder.
+  
 ### Required Software
 | Software | Version | Installation |
 |----------|---------|--------------|
@@ -27,7 +39,6 @@ python3 PanVariant.py --samplelist samplelist --executor local
 | Software | Description |
 |----------|-------------|
 | **SGE (Sun Grid Engine)** | Optional cluster management system for distributed computing (required only for `blc` executor) |
-
 ---
 
 ## Arguments Description
