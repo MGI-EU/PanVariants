@@ -31,9 +31,9 @@ sh PanVariants_required_files.sh
 | Software | Version | Installation |
 |----------|---------|--------------|
 | **Nextflow** | 23.10.0 | Download from: `https://github.com/nextflow-io/nextflow/releases/download/v23.10.0/nextflow-23.10.0-all` <br> Rename to `nextflow` and copy to software directory |
-| **Java** | 鈮?17 | Required for Nextflow execution |
-| **Singularity** | 鈮?3.8 | Required for containerized execution |
-| **Python** | 鈮?3.9.13 | Required for running the Python wrapper script |
+| **Java** | ≥ 17 | Required for Nextflow execution |
+| **Singularity** | ≥ 3.8 | Required for containerized execution |
+| **Python** | ≥ 3.9.13 | Required for running the Python wrapper script |
 
 ### Optional Software
 | Software | Description |
