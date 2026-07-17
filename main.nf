@@ -7,10 +7,10 @@ include {mergePeReads;runPangenie;Pangenie_postprocess;run_manta;truvariBench
 } from './tasks/SVs.nf'
 include {runCNVnator;cnvBench;cnv_filter} from './tasks/CNVs.nf'
 include {runExpansionHunter} from './tasks/STRs.nf'
-include {STR_filter;adjformat;SV_add_type;sample_concat;vcf_normalize_collapse;
-    exclude_overlap;reheader_merge_vcf
-} from './tasks/merge_SV_STR_CNV.nf'
-include {get_UsageReport} from './tasks/generateUsageReport.nf'
+include {STR_filter;adjformat;prepare_merge_vcfs;filter_cnv_str_by_pangenie;
+    filter_pangenie_by_new_variants;finalize_merged_sv
+} from './tasks/merge_SV_vcf.nf'
+include {get_UsageReport;cleanup_intermediate} from './tasks/generateUsageReport.nf'
 
 input_list = readInput(params.sampleList)
 
@@ -101,16 +101,17 @@ workflow {
         mergePeReads(fq_input)
         runPangenie(mergePeReads.out.mergePe)
         Pangenie_postprocess(runPangenie.out.pangenie_out)
-        SV_add_type(Pangenie_postprocess.out.pangenie_PanVariants_SVs)
+        Pangenie_postprocess.out.pangenie_PanVariants_SVs
+            .map { "Pangenie_postprocess_done" }
+            .set { Pangenie_postprocess_done }
         run_manta(bam_input)
-        SV_add_type_done = SV_add_type.out.SV_add_type_done
         run_manta_done = run_manta.out.run_manta_done
         // SV benchmark - only executed when standard_sample = 1
         // if (params.standard_sample == 1) {
         //     truvariBench(runPangenie.out.pangenie_out)
         // }
     }else{
-        SV_add_type_done = process_done
+        Pangenie_postprocess_done = process_done
         run_manta_done = process_done
     }
         
@@ -120,7 +121,7 @@ workflow {
         cnv_filter(runCNVnator.out.cnv_txt)
         cnv_filter_done = cnv_filter.out.cnv_filter_done
         // CNV benchmark - only executed when standard_sample = 1
-        // 软件跑不通，暂时不弄
+        // CNV benchmark is currently disabled.
         // if (params.standard_sample == 1) {
         //     cnvBench(cnv_filter.out.cnv_filtered_vcf)
         // }
@@ -139,38 +140,52 @@ workflow {
     }
 
     // Merge SV, STR, CNV
-    if (params.run_sv && params.run_str && params.run_cnv){
+    if (params.run_sv == "yes" && params.run_str == "yes" && params.run_cnv == "yes"){
         run_manta.out.manta_sv_vcf
             .combine(cnv_filter.out.cnv_filtered_vcf, by:0)
             .combine(adjformat.out.str_adjformat_vcf, by:0)
-            .combine(SV_add_type.out.pv_with_svtype_vcf, by:0)
-            .set{sample_concat_input}
-        sample_concat(sample_concat_input)
-        vcf_normalize_collapse(sample_concat.out.concat_vcf)
-        sample_concat.out.pv_s_vcf
-            .combine(vcf_normalize_collapse.out.manta_CNV_STR_sorted_vcf, by:0)
-            .set{exclude_overlap_input}
-        exclude_overlap(exclude_overlap_input)
-        reheader_merge_vcf(exclude_overlap.out.pv_mantaCNVSTR_vcf)
-        reheader_merge_vcf_done = reheader_merge_vcf.out.reheader_merge_vcf_done
+            .combine(Pangenie_postprocess.out.pangenie_PanVariants_SVs, by:0)
+            .set{prepare_merge_vcfs_input}
+        prepare_merge_vcfs(prepare_merge_vcfs_input)
+
+        prepare_merge_vcfs.out.cnvnator_annotated_vcf
+            .combine(prepare_merge_vcfs.out.str_annotated_vcf, by:0)
+            .combine(prepare_merge_vcfs.out.pangenie_annotated_vcf, by:0)
+            .set{filter_cnv_str_by_pangenie_input}
+        filter_cnv_str_by_pangenie(filter_cnv_str_by_pangenie_input)
+
+        prepare_merge_vcfs.out.manta_annotated_vcf
+            .combine(filter_cnv_str_by_pangenie.out.cnv_str_supported_vcf, by:0)
+            .combine(filter_cnv_str_by_pangenie.out.pangenie_after_cnv_str_vcf, by:0)
+            .set{filter_pangenie_by_new_variants_input}
+        filter_pangenie_by_new_variants(filter_pangenie_by_new_variants_input)
+
+        filter_pangenie_by_new_variants.out.new_variants_vcf
+            .combine(filter_pangenie_by_new_variants.out.pangenie_filtered_vcf, by:0)
+            .combine(prepare_merge_vcfs.out.merged_header, by:0)
+            .set{finalize_merged_sv_input}
+        finalize_merged_sv(finalize_merged_sv_input)
+        merge_SV_vcf_done = finalize_merged_sv.out.merge_SV_vcf_done
         if (params.standard_sample == 1) {
-            truvariBench(reheader_merge_vcf.out.merged_vcf)
+            truvariBench(finalize_merged_sv.out.merged_vcf)
             truvariBench_done = truvariBench.out.truvariBench_done
         }else{
             truvariBench_done = process_done
         }
     }else{
-        reheader_merge_vcf_done = process_done
+        merge_SV_vcf_done = process_done
+        truvariBench_done = process_done
     }
     deepVariant_done
         .combine(run_rtgtools_done)
-        .combine(SV_add_type_done)
+        .combine(Pangenie_postprocess_done)
         .combine(run_manta_done)
         .combine(cnv_filter_done)
         .combine(adjformat_done)
-        .combine(reheader_merge_vcf_done)
+        .combine(merge_SV_vcf_done)
         .combine(truvariBench_done)
         .collect()
         .set{get_UsageReport_input}
     get_UsageReport(get_UsageReport_input)
+    cleanup_intermediate(get_UsageReport.out.usage_report_done)
 }

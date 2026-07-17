@@ -116,7 +116,8 @@ process fqfilter{
         read1_path=`realpath ${read1}` && \
         work_dir="\$(realpath ${params.outdir}/../ 2>/dev/null || pwd)" && \
         if [ "\$read1_path" = "\$work_dir"/* ]; then
-            rm -f `realpath ${read1}` `realpath ${read2}`
+            :
+            # rm -f `realpath ${read1}` `realpath ${read2}`
         fi
         """
 }

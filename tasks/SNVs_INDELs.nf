@@ -35,7 +35,7 @@ process vgPaths {
     tuple val(sampleId), path(fastq1), path(fastq2)
 
     output:
-    tuple val(sampleId), path("${sampleId}.${params.ref}.path_list.txt"), emit: path_list  // 添加 val(sampleId)
+    tuple val(sampleId), path("${sampleId}.${params.ref}.path_list.txt"), emit: path_list  // add val(sampleId)
 
     script:
     def gbz = params["${params.ref}_gbz"]
@@ -98,8 +98,7 @@ process samtoolsSort {
     ${params.samtools} index ${sorted_BAM}
     """
 }
-
-// 提取双端都未比对的reads
+// Extract paired reads where both ends are unmapped
 process extract_unmapped_reads {
     publishDir "${params.outdir}/01.BAM/${sampleId}", mode:'link'
 
@@ -114,8 +113,7 @@ process extract_unmapped_reads {
     """
 
 }
-
-// 按read name排序并转换为FASTQ
+// Sort by read name and convert to FASTQ
 process sort_and_convert_to_fastq{
     publishDir "${params.outdir}/01.BAM/${sampleId}", mode:'link'
 
@@ -144,8 +142,7 @@ process sort_and_convert_to_fastq{
 
     """
 }
-
-// 用bwa重新比对
+// Realign with bwa
 process bwa_align{
     publishDir "${params.outdir}/01.BAM/${sampleId}", mode:'link'
     input:
@@ -164,8 +161,7 @@ process bwa_align{
 
     """
 }
-
-// 提取原始已比对reads
+// Extract originally mapped reads
 process extract_mapped_reads {
     publishDir "${params.outdir}/01.BAM/${sampleId}", mode:'link'
     input:
@@ -179,8 +175,7 @@ process extract_mapped_reads {
     ${params.samtools} view -@ ${params.threads} -F 0xC -b ${sorted_bam} > ${sampleId}_vg_mapped.bam
     """
 }
-
-// 合并BAM文件
+// Merge BAM files
 process merge_bam {
     publishDir "${params.outdir}/01.BAM/${sampleId}", mode:'link'
 
@@ -197,8 +192,7 @@ process merge_bam {
     ${bwa_realigned_bam}
     """
 }
-
-// 对合并的BAM文件按坐标排序
+// Sort merged BAM by coordinate
 process sort_merge_bam {
     publishDir "${params.outdir}/01.BAM/${sampleId}", mode:'link'
 
@@ -214,8 +208,7 @@ process sort_merge_bam {
     ${params.samtools} index -@ ${params.threads} ${sampleId}_merged_sorted.bam
     """
 }
-
-// 统计比对信息
+// Count alignment statistics
 process bam_stat{
     publishDir "${params.outdir}/01.BAM/${sampleId}", mode:'link'
 
@@ -246,9 +239,9 @@ process samtools_markdup_dv{
         ${params.samtools} fixmate -@ ${params.threads} -m - - | \
         ${params.samtools} sort -@ ${params.threads} - | \
         ${params.samtools} markdup -@ ${params.threads} - ${sample_name}_markdup.bam && \
-        ${params.samtools} index ${sample_name}_markdup.bam && \
-        rm -f `realpath ${sort_bam}`
-        rm -f `realpath ${sort_bam_bai}`
+        ${params.samtools} index ${sample_name}_markdup.bam
+        # rm -f `realpath ${sort_bam}`
+        # rm -f `realpath ${sort_bam_bai}`
         """
 }
 

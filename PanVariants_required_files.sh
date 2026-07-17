@@ -1,4 +1,5 @@
 # Create a database folder within the workflow folder
+WORKFLOW_DIR=`pwd`
 DB=`pwd`/database
 mkdir -p $DB
 
@@ -13,20 +14,21 @@ wget https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/free
 # linear reference genome: hg38/GRCh38
 # ===================================================================
 mkdir -p $DB/fa_path && cd $DB/fa_path
-wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz && \
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz && \
 gzip -d GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz &&
 mv GCA_000001405.15_GRCh38_no_alt_analysis_set.fna GCA_000001405.15_GRCh38_no_alt_analysis_set.fa
 mkdir -p bwa_index && cd bwa_index && ln -s ../GCA_000001405.15_GRCh38_no_alt_analysis_set.fa ./ && \
-bwa-mem2 index GCA_000001405.15_GRCh38_no_alt_analysis_set.fa
+singularity exec --no-home --pwd `pwd` -B `pwd`  $WORKFLOW_DIR/sifs/PanVariants.sif /bin/bash -c '/usr/local/app/PanVariants/tools/bwa-mem2-2.3_x64-linux/bwa-mem2 index GCA_000001405.15_GRCh38_no_alt_analysis_set.fa'
+singularity exec --no-home --pwd `pwd` -B `pwd`  $WORKFLOW_DIR/sifs/PanVariants.sif /bin/bash -c "/usr/local/app/PanVariants/tools/samtools-1.10/samtools dict GCA_000001405.15_GRCh38_no_alt_analysis_set.fa > GCA_000001405.15_GRCh38_no_alt_analysis_set.dict"
 cd $DB/fa_path
 CHROMS=("chr1" "chr2" "chr3" "chr4" "chr5" "chr6" "chr7" "chr8" "chr9" "chr10" "chr11" "chr12" "chr13" "chr14" "chr15" "chr16" "chr17" "chr18" "chr19" "chr20" "chr21" "chr22" "chrM" "chrX" "chrY")
 REF_FILE="GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 for chrom in "${CHROMS[@]}"; do
-    samtools faidx "$REF_FILE" "$chrom" >> GCA_000001405.15_GRCh38_only_chromosome.fa
+    singularity exec --no-home --pwd `pwd` -B `pwd`  $WORKFLOW_DIR/sifs/PanVariants.sif /bin/bash -c "/usr/local/app/PanVariants/tools/samtools-1.10/samtools faidx $REF_FILE $chrom >> GCA_000001405.15_GRCh38_only_chromosome.fa"
     echo "$chrom"
 done
 sleep 10
-samtools faidx GCA_000001405.15_GRCh38_only_chromosome.fa
+singularity exec --no-home --pwd `pwd` -B `pwd`  $WORKFLOW_DIR/sifs/PanVariants.sif /bin/bash -c "/usr/local/app/PanVariants/tools/samtools-1.10/samtools faidx GCA_000001405.15_GRCh38_only_chromosome.fa"
 
 # ===================================================================
 # PanVariants DNBSEQ model: T1+
@@ -46,9 +48,11 @@ gzip -d cactus_filtered_ids.vcf.gz
 # ===================================================================
 # PanGenie index files for the SV input VCF: HPRC-GRCh38 (88 haplotypes)
 # ===================================================================
-reference=$DB/fa_path/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+reference=$DB/fa_path/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa
 SV_input_vcf=$DB/pangenie/grch38/reference/cactus_filtered_ids.vcf
-$pangenie_index -r ${reference} -v ${SV_input_vcf} -t 32 -o HPRC_GRCh38 -e 100000
+cd $DB/pangenie/grch38/reference/ && ln -s $reference ./ && \
+singularity exec --no-home --pwd `pwd` -B $WORKFLOW_DIR  $WORKFLOW_DIR/sifs/PanVariants.sif /bin/bash -c "/usr/local/app/PanVariants/tools/pangenie/build/src/PanGenie-index -r ${reference} -v ${SV_input_vcf} -t 32 -o HPRC_GRCh38 -e 100000"
+
 
 # ===================================================================
 # SNV/INDEL/SV truth set: HG002 T2T Q100 v1.1
@@ -61,11 +65,13 @@ wget https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTri
 wget https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/analysis/NIST_HG002_DraftBenchmark_defrabbV0.019-20241113/GRCh38_HG2-T2TQ100-V1.1_stvar.vcf.gz.tbi
 wget https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/analysis/NIST_HG002_DraftBenchmark_defrabbV0.019-20241113/GRCh38_HG2-T2TQ100-V1.1_stvar.benchmark.bed
 
+singularity exec --no-home --pwd `pwd` -B `pwd` -B $WORKFLOW_DIR  $WORKFLOW_DIR/sifs/PanVariants.sif /bin/bash -c "/usr/local/app/PanVariants/tools/bcftools-1.22/bin/bcftools view GRCh38_HG2-T2TQ100-V1.1_stvar.vcf.gz chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22 -Oz -o GRCh38_HG2-T2TQ100-V1.1_stvar_1_22.vcf.gz --write-index=tbi"
+grep -w -E "chr1|chr2|chr3|chr4|chr5|chr6|chr7|chr8|chr9|chr10|chr11|chr12|chr13|chr14|chr15|chr16|chr17|chr18|chr19|chr20|chr21|chr22" GRCh38_HG2-T2TQ100-V1.1_stvar.benchmark.bed > GRCh38_HG2-T2TQ100-V1.1_stvar.benchmark_1_22.bed
 # ===================================================================
 # RTG format files for the reference genome: hg38/GRCh38
 # ===================================================================
-mkdir -p $DB/RTG/GRCh38.sdf && cd $DB/RTG
-$rtg format -o GRCh38.sdf ${reference}
+mkdir -p $DB/RTG && cd $DB/RTG
+singularity exec --no-home --pwd `pwd` -B $WORKFLOW_DIR  $WORKFLOW_DIR/sifs/PanVariants.sif /bin/bash -c "/usr/local/app/PanVariants/tools/rtg-tools-3.11/rtg format -o GRCh38.sdf ${reference}"
 
 # ===================================================================
 # RTG stratification files for the reference genome: hg38/GRCh38

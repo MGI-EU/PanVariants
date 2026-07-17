@@ -4,7 +4,7 @@
 File name    :   PanVariant
 Created      :   2025/11/21
 Author       :   Zeng Xiaojie 
-Version      :   1.0
+Version      :   1.1
 Contact      :   zengxiaojie@genomics.cn
 License      :   Copyright (c) 2026, MGI.
 """
@@ -56,7 +56,6 @@ def find_file_symlinks(file_path,path_all):
         symlink_dir = os.path.dirname(file_path)
         # 添加到列表中
         add_path(symlink_dir,path_all)
-        # 更新路径为解析后的路径
         file_path = resolved_path
         # 如果解析后的路径是符号链接，继续循环
         if os.path.islink(file_path):
@@ -71,43 +70,43 @@ def find_file_symlinks(file_path,path_all):
                 else:
                     break
 
-def get_fq_path(samplelsit,path_all):
+def get_fq_path(samplelist,path_all):
     try:
-        with open(samplelsit, 'r', encoding='utf-8') as file:
+        with open(samplelist, 'r', encoding='utf-8') as file:
             for line_num, line in enumerate(file, 1):
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
                 columns = line.split('\t')
                 if len(columns) != 3:
-                    print(f"错误：第{line_num}行不符合规范，应该有3列，实际有{len(columns)}列")
+                    print(f"Error: line {line_num} must have 3 tab-separated columns, got {len(columns)}.")
                     sys.exit(1)
                 sample_name, read1_files, read2_files = columns
                 
                 read1_list = [path.strip() for path in read1_files.split(';') if path.strip()]
                 read2_list = [path.strip() for path in read2_files.split(';') if path.strip()]
                 if len(read1_list) != len(read2_list):
-                    print(f"错误：第{line_num}行中read1文件数量({len(read1_list)})与read2文件数量({len(read2_list)})不相同")
+                    print(f"Error: line {line_num} has {len(read1_list)} read1 files but {len(read2_list)} read2 files.")
                     sys.exit(1)
                 for i, (read1_path, read2_path) in enumerate(zip(read1_list, read2_list)):
                     if not os.path.isfile(read1_path):
-                        print(f"错误：第{line_num}行中read1文件路径不存在: {read1_path}")
+                        print(f"Error: line {line_num} read1 file does not exist: {read1_path}")
                         sys.exit(1)
                     else:
                         find_file_symlinks(read1_path,path_all)
                     if not os.path.isfile(read2_path):
-                        print(f"错误：第{line_num}行中read2文件路径不存在: {read2_path}")
+                        print(f"Error: line {line_num} read2 file does not exist: {read2_path}")
                         sys.exit(1)
                     else:
                         find_file_symlinks(read2_path,path_all)
                 
-                print(f"第{line_num}行验证通过: sample_name='{sample_name}', 包含{len(read1_list)}对文件")
+                print(f"Line {line_num} validated: sample_name='{sample_name}', pairs={len(read1_list)}.")
     
     except FileNotFoundError:
-        print(f"错误：文件 '{samplelsit}' 不存在")
+        print(f"Error: sample list file does not exist: {samplelist}")
         sys.exit(1)
     except Exception as e:
-        print(f"读取文件时发生错误: {e}")
+        print(f"Error reading sample list file: {e}")
         sys.exit(1)
 
 def merge_paths(paths):
@@ -131,14 +130,14 @@ def main():
     database_default = script_path + '/database'
     script_default = panvariant_dir + '/scripts'
     container_default = script_path + '/sifs/PanVariants.sif'
-    nf_config_default = panvariant_dir + '/PanVariants.config'
+    nf_config_default = script_path + '/PanVariants.config'
     argparser = argparse.ArgumentParser(
         description='Run PanVariants pipeline by singularity container',
 		prog='PanVariants',
 		usage='./PanVariants [OPTIONS]',
         formatter_class=argparse.RawTextHelpFormatter)
-    argparser.add_argument('-s','--samplelist', type=str, required=False,
-    help="""Sample info ，only one line with 3 columns split by tab:
+    argparser.add_argument('-s','--samplelist', type=str, required=True,
+    help="""Sample info, one or more lines with 3 columns split by tab:
         sample_name\tread1 path\tread2 path""")
     argparser.add_argument('-ex','--executor', type=str,default='blc',
     help="""The executor options, [blc|local].
@@ -154,17 +153,17 @@ def main():
                            help='Run SV detection,[yes | no], default [yes]')
     argparser.add_argument('-rstr','--run_str',type=str,default='yes',
                            help='Run STR detection,[yes | no], default [yes]')
-    argparser.add_argument('-md','--mark_dup',type=str,default='yes',
+    argparser.add_argument('-md','--mark_dup',type=str,default='no',
                            help='Mark duplication,[yes | no], default [no]')
-    argparser.add_argument('-ft','--fq_filter',type=str,default='yes',
+    argparser.add_argument('-ft','--fq_filter',type=str,default='no',
                            help='Run fq filter,[yes | no], default [no]')
-    argparser.add_argument('-sb','--split_bam',type=str,default='yes',
+    argparser.add_argument('-sb','--split_bam',type=str,default='no',
                            help='Split the bam file by chromosome and then run deepvariant by chromosome,[yes | no], default [no]')
     argparser.add_argument('-ad1','--adapter1',type=str,default='AAGTCGGAGGCCAAGCGGTCTTAGGAAGACAA',
                            help='The adapter1 sequences ,default [AAGTCGGAGGCCAAGCGGTCTTAGGAAGACAA]')
     argparser.add_argument('-ad2','--adapter2',type=str,default='AAGTCGGATCGTAGCCATGTCGTTCTGTGAGCCAAGGAGTTG',
                            help='The adapter2 sequences ,default [AAGTCGGATCGTAGCCATGTCGTTCTGTGAGCCAAGGAGTTG]')
-    argparser.add_argument('-ra','--re_alignment',type=str,default='yes',
+    argparser.add_argument('-ra','--re_alignment',type=str,default='no',
                            help='Run re-alignment,[yes | no], default [no]')
     argparser.add_argument('-c','--nf_config',type=str,
                            default=nf_config_default,
@@ -180,9 +179,9 @@ def main():
                            help='singularity container path')
     argparser.add_argument('-scr','--scratch_tmp', type=str, required=False,
                            help='The path for nextflow scratch directive')
-    argparser.add_argument('-q','--queue', type=str,
+    argparser.add_argument('-q','--queue', type=str, default='none',
                            help='The queue name of the qsub command -q parameter. Note: It only takes effect when the executor option is set to blc.')
-    argparser.add_argument('-pj','--project', type=str,
+    argparser.add_argument('-pj','--project', type=str, default='none',
                            help='The project name of the qsub command -P parameter. Note: It only takes effect when the executor option is set to blc.')
     argparser.add_argument('-an','--ansi_log', type=str,
                            default='false',
@@ -208,7 +207,8 @@ def main():
     queue = args.queue
     project = args.project
     ansi_log = args.ansi_log
-    project_para = f'\"-P {project} -q\"' if project != 'none' else '\" -q \"'
+    queue_para = f'"-q {queue}"' if queue != 'none' else '""'
+    project_para = f'"-P {project}"' if project != 'none' else '""'
     current_time = datetime.now()
     formatted_time = current_time.strftime("%Y-%m-%d_%H%M%S")
     cwd_path = os.getcwd()
@@ -222,7 +222,7 @@ def main():
     all_nf_bind_merge_list = merge_paths(all_nf_bind_list)
     all_nf_bind_str = ','.join(all_nf_bind_merge_list)
     runit = script_path + '/runit'
-    # 配置nextflow运行参数
+    # 配置 Nextflow 运行参数
     nextflow_config =f"""
     process{{
         container = \'{container}\'
@@ -274,16 +274,15 @@ def main():
         --sampleList {samplelist} \
         --pipeline_database {database} \
         --runit {runit} \
-        --queue {queue} \
+        --queue {queue_para} \
         --project_para {project_para} \
         --outdir {output}
     """
     #print(cmd)
-    # 注册信号处理器
-    signal.signal(signal.SIGTERM, handle_exit)  # kill默认信号
+    signal.signal(signal.SIGTERM, handle_exit)
     signal.signal(signal.SIGINT, handle_exit)   # Ctrl+C
 
-    # 启动子进程（需创建进程组）
+    # 启动子进程（需要创建进程组）
     global proc
     proc = subprocess.Popen(cmd,shell=True,start_new_session=True)
     return_code = proc.wait()
@@ -291,7 +290,7 @@ def main():
         sys.exit(return_code)
 
 def handle_exit(signum, frame):
-    # 杀死子进程
+    # 终止子进程
     if 'proc' in globals() and proc.poll() is None:
         print("Received signal to terminate, killing subprocess...")
         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)

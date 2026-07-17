@@ -1,7 +1,7 @@
 # PanVariants Usage Documentation
 
 ## Overview
-`PanVariants` is a highly accurate variant detection pipeline that integrates pangenome references and artificial intelligence (AI) model to identify single nucleotide variants (SNVs), INDELs (<50 bp), copy number variants (CNVs), short tandem repeats (STRs), and other structural variants (SVs, ≥50 bp). It supports execution on both local machines and Sun Grid Engine (SGE) clusters.
+`PanVariants` is a highly accurate variant detection pipeline that integrates pangenome references and artificial intelligence (AI) model to identify single nucleotide variants (SNVs), INDELs (<50 bp), copy number variants (CNVs), short tandem repeats (STRs), and other structural variants (SVs, 鈮?0 bp). It supports execution on both local machines and Sun Grid Engine (SGE) clusters.
 
 ---
 
@@ -9,7 +9,7 @@
 
 ### Simple Run Command
 ```bash
-python3 PanVariant.py --samplelist samplelist --executor local
+python3 PanVariants.py --samplelist samplelist --executor local
 ```
 
 ---
@@ -31,9 +31,9 @@ sh PanVariants_required_files.sh
 | Software | Version | Installation |
 |----------|---------|--------------|
 | **Nextflow** | 23.10.0 | Download from: `https://github.com/nextflow-io/nextflow/releases/download/v23.10.0/nextflow-23.10.0-all` <br> Rename to `nextflow` and copy to software directory |
-| **Java** | ≥ 17 | Required for Nextflow execution |
-| **Singularity** | ≥ 3.8 | Required for containerized execution |
-| **Python** | ≥ 3.9.13 | Required for running the Python wrapper script |
+| **Java** | 鈮?17 | Required for Nextflow execution |
+| **Singularity** | 鈮?3.8 | Required for containerized execution |
+| **Python** | 鈮?3.9.13 | Required for running the Python wrapper script |
 
 ### Optional Software
 | Software | Description |
@@ -83,7 +83,7 @@ sh PanVariants_required_files.sh
 
 ### Run Locally with All Variant Types Enabled
 ```bash
-python3 PanVariant.py \
+python3 PanVariants.py \
   --samplelist samples.tsv \
   --executor local \
   --output results \
@@ -95,7 +95,7 @@ python3 PanVariant.py \
 
 ### Run on SGE Cluster with Specific Queue and Project
 ```bash
-python3 PanVariant.py \
+python3 PanVariants.py \
   --samplelist samples.tsv \
   --executor blc \
   --queue high_mem \
@@ -109,6 +109,7 @@ python3 PanVariant.py \
 
 - The `--queue` and `--project` parameters are only valid when `--executor` is set to `blc`.
 - The sample list file must strictly follow the format: three tab-separated columns with no header row.
+- Do not run the pipeline from inside the `--output` directory; doing so will cause errors.
 - If using Singularity containers, ensure the correct `.sif` file path is provided via `-f`.
 - Duplicate marking and FastQ filtering are disabled by default. Set them explicitly to `yes` if required.
 
